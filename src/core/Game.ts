@@ -209,28 +209,27 @@ export class Game {
       this.cameraCtl.setZoom(this.cameraCtl.getZoom() + wheel * 0.02);
     }
 
-    // Unified movement: WASD/arrows take priority over click. The
-    // player always has at most ONE target. Each frame:
-    //   1. If a movement key is held → set target far in that direction.
-    //   2. Else if there's a pending click → set target to clicked point.
-    //   3. Else → clear target (player stops where they are).
-    //   Special: if a dialog is open, ANY click advances the dialog
-    //   (no movement).
+    // Unified movement: WASD/arrows take priority over click.
+    //
+    // CRITICAL: We do NOT clear the target every frame. The target
+    // persists until the Player arrives (reachDist) or a new input
+    // overrides it. Clearing each frame would cancel click-to-move
+    // immediately, since popClick() returns null the frame after
+    // a click is consumed.
     if (this.worldActive && this.inDialogPlaza) {
-      // While in dialog, any click advances; the popClick is consumed.
+      // While in dialog, any click advances; popClick is consumed.
       const click = this.input.popClick();
       if (click) this.dialog.advance();
     } else if (this.worldActive) {
       const axis = this.input.getMoveAxis();
       if (axis.dx !== 0 || axis.dz !== 0) {
-        // Target 100 units ahead (way past reachDist) so the player
-        // never "arrives" and keeps walking while the key is held.
+        // WASD: target far ahead in the input direction.
         this.player.setTarget(
           this.player.position.x + axis.dx * 100,
           this.player.position.z + axis.dz * 100,
         );
       } else {
-        // No movement key: check for a click.
+        // No movement key: check for a pending click.
         const click = this.input.popClick();
         if (click && !click.right) {
           // Raycast to ground plane (y = 0)
@@ -244,12 +243,11 @@ export class Game {
           const hit = new THREE.Vector3();
           if (ray.ray.intersectPlane(plane, hit) && this.island.isWalkable(hit.x, hit.z)) {
             this.player.setTarget(hit.x, hit.z);
-          } else {
-            this.player.clearTarget();
+            // target persists across frames until the player arrives.
           }
-        } else {
-          // No key, no click → stop moving where we are.
-          this.player.clearTarget();
+          // No click, or click outside walkable area: KEEP the
+          // current target. Do not clear here — the player is on
+          // their way to the previous click destination.
         }
       }
     }
