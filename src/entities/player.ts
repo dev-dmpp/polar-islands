@@ -29,7 +29,7 @@ export class Player {
 
   constructor() {
     this.group = new THREE.Group();
-    this.group.position.set(0, 0, 8);
+    this.group.position.set(0, 0, 4);
 
     // Soft round shadow disc beneath the player.
     const shadowGeom = new THREE.CircleGeometry(0.55, 16);

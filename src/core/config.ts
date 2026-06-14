@@ -48,10 +48,10 @@ export const PALETTE = {
 } as const;
 
 export const WORLD = {
-  /** Island size in world units (oval). */
+  /** Island size in world units (rectangular, slightly wider than deep). */
   island: {
-    radiusX: 42,
-    radiusZ: 32,
+    width: 44,    // X (east-west)
+    depth: 36,    // Z (north-south)
     surfaceY: 0,
   },
   /** Player walk speed in world units / second. */
@@ -62,16 +62,14 @@ export const WORLD = {
     walkBobAmp: 0.06,
     walkBobHz: 4.5,
   },
-  /** Camera follow tuning. Orthographic top-down.
-   *  zoom = half-height of viewport in world units.
-   *  At zoom 18 we see ~36 world units tall, which fits the island
-   *  (radiusZ=32) with a small margin. */
+  /** Camera follow tuning. Perspective with mild tilt.
+   *  zoom controls FOV: smaller zoom = more zoomed in (closer to player). */
   camera: {
     lookAhead: 0,
     followLerp: 0.12,
-    minZoom: 12,
+    minZoom: 5,
     maxZoom: 60,
-    initialZoom: 38,
+    initialZoom: 22,
   },
   /** Rng seed for procedural world. */
   seed: 'polar-aurora',

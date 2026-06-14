@@ -102,17 +102,16 @@ export class Game {
     this.landing = createLanding(hudContainer);
     this.dialog = new DialogBubble(hudContainer);
 
-    // Initial camera snap above the player (orthographic tilted top-down).
+    // Initial camera snap.
+    const dist = 70;
+    const tilt = 0.42;
     this.cameraCtl.camera.position.set(
       this.player.position.x,
-      500,
-      this.player.position.z + 500 * Math.tan(0.38),
+      dist * Math.sin(tilt),
+      this.player.position.z + dist * Math.cos(tilt),
     );
-    this.cameraCtl.camera.lookAt(
-      this.player.position.x,
-      0,
-      this.player.position.z,
-    );
+    // Look at island center (z=0) so the whole island is framed.
+    this.cameraCtl.camera.lookAt(this.player.position.x, 0, 0);
 
     // Show landing. The world's first paint is already done (sky + island
     // visible behind the landing overlay). Mark ready immediately; the
@@ -158,17 +157,15 @@ export class Game {
   }
 
   private resetCamera(): void {
-    // Re-snap camera (orthographic tilted top-down).
+    const dist = 70;
+    const tilt = 0.42;
     this.cameraCtl.camera.position.set(
       this.player.position.x,
-      500,
-      this.player.position.z + 500 * Math.tan(0.38),
+      dist * Math.sin(tilt),
+      this.player.position.z + dist * Math.cos(tilt),
     );
-    this.cameraCtl.camera.lookAt(
-      this.player.position.x,
-      0,
-      this.player.position.z,
-    );
+    // Look at island center (z=0) so the whole island is framed.
+    this.cameraCtl.camera.lookAt(this.player.position.x, 0, 0);
   }
 
   private getNearestPlaza(): PlazaInfo | null {

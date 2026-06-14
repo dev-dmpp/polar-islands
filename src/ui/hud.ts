@@ -62,7 +62,7 @@ export function createHud(parent: HTMLElement): HudApi {
         <h2>Menú</h2>
         <div class="hud-menu-list">
           <div class="mm-row"><span class="k">Nombre</span><span class="v">${PROFILE.name}</span></div>
-          <div class="mm-row"><span class="k">Ciudad</span><span class="v">${PROFILE.city}</span></div>
+          <div class="mm-row"><span class="k">Dirección</span><span class="v">${PROFILE.city}</span></div>
           <div class="mm-row"><span class="k">Email</span><span class="v">${PROFILE.email}</span></div>
           <div class="mm-row"><span class="k">Teléfono</span><span class="v">${PROFILE.phone}</span></div>
           <div class="mm-row"><span class="k">GitHub</span><span class="v">@dev-dmpp</span></div>

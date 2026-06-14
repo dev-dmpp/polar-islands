@@ -1,7 +1,7 @@
 /**
- * Island generator. Builds the central island: a grass surface oval with
- * rocky cliffs underneath, edge fade-to-cliff, and a small water ring around
- * it. Deterministic from the WORLD.seed.
+ * Island generator. Builds the central island: a rectangular grass
+ * surface with rounded corners, rocky cliffs underneath, and a small
+ * water ring around it. Deterministic from the WORLD.seed.
  *
  * Each plaza is rendered as a small themed building / marker, not just a
  * pole with a lantern. Player + trees have a soft round shadow disc
@@ -16,7 +16,7 @@ export interface Island {
   group: THREE.Group;
   /** Returns world coords clamped to the island's walkable area. */
   clamp(x: number, z: number): { x: number; z: number };
-  /** True if a point is on the walkable surface (within the island, above the water ring). */
+  /** True if a point is on the walkable surface (within the island). */
   isWalkable(x: number, z: number): boolean;
   /** Plaza mesh groups, indexed by plaza id. */
   plazas: Map<string, THREE.Group>;
@@ -27,16 +27,17 @@ interface PlazaSpec {
   name: string;
   x: number;
   z: number;
-  /** Plaza marker style. */
   style: 'forge' | 'library' | 'tower' | 'plaza' | 'workshop' | 'shrine' | 'well';
 }
 
+/** Plazas arranged in a 2x3 grid on a rectangular island, with a
+ *  central "shrine" point in the middle. */
 const PLAZA_SPOTS: PlazaSpec[] = [
-  { id: 'aurora',      name: 'Plaza Aurora',     x:  22, z: -8,  style: 'plaza'    },
-  { id: 'forja',       name: 'Plaza Forja',      x: -22, z: -14, style: 'forge'    },
-  { id: 'biblioteca',  name: 'Plaza Biblioteca', x:   0, z:  22, style: 'library'  },
-  { id: 'herreria',    name: 'Plaza Herrería',   x: -22, z:  14, style: 'workshop' },
-  { id: 'torre',       name: 'Plaza Torre',      x:  22, z:  16, style: 'tower'    },
+  { id: 'aurora',      name: 'Plaza Aurora',     x: -14, z: -10, style: 'plaza'    },
+  { id: 'forja',       name: 'Plaza Forja',      x:  14, z: -10, style: 'forge'    },
+  { id: 'biblioteca',  name: 'Plaza Biblioteca', x:  14, z:  10, style: 'library'  },
+  { id: 'herreria',    name: 'Plaza Herrería',   x: -14, z:  10, style: 'workshop' },
+  { id: 'torre',       name: 'Plaza Torre',      x:   0, z: -14, style: 'tower'    },
   { id: 'contacto',    name: 'El Mensajero',     x:   0, z:   0, style: 'well'     },
 ];
 
@@ -57,7 +58,6 @@ function shadowDisc(radius: number, opacity = 0.32): THREE.Mesh {
 function buildTree(rng: () => number): THREE.Group {
   const tree = new THREE.Group();
 
-  // Trunk
   const trunk = new THREE.Mesh(
     new THREE.CylinderGeometry(0.18, 0.22, 0.9, 6),
     toonMat({ color: PALETTE.woodDark }),
@@ -66,7 +66,6 @@ function buildTree(rng: () => number): THREE.Group {
   addOutline(trunk, '#2a1a0a', 1.06);
   tree.add(trunk);
 
-  // 3 tiers of foliage (decreasing radius going up)
   const t1 = new THREE.Mesh(
     new THREE.ConeGeometry(0.95, 0.9, 8),
     toonMat({ color: PALETTE.leafDark }),
@@ -91,7 +90,6 @@ function buildTree(rng: () => number): THREE.Group {
   addOutline(t3, '#2a1a0a', 1.04);
   tree.add(t3);
 
-  // Slight random rotation for natural feel
   tree.rotation.y = rng() * Math.PI * 2;
   return tree;
 }
@@ -114,7 +112,6 @@ function buildHouse(opts: {
   addOutline(body, '#2a1a0a', 1.03);
   g.add(body);
 
-  // Pyramid roof (4-sided cone)
   const roof = new THREE.Mesh(
     new THREE.ConeGeometry(Math.max(opts.w, opts.d) * 0.78, 0.9, 4),
     toonMat({ color: opts.roofColor }),
@@ -124,7 +121,6 @@ function buildHouse(opts: {
   addOutline(roof, '#2a1a0a', 1.03);
   g.add(roof);
 
-  // Door
   const door = new THREE.Mesh(
     new THREE.BoxGeometry(0.4, opts.h * 0.55, 0.1),
     toonMat({ color: opts.doorColor ?? PALETTE.woodDark }),
@@ -132,7 +128,6 @@ function buildHouse(opts: {
   door.position.set(0, opts.h * 0.275, opts.d / 2 + 0.01);
   g.add(door);
 
-  // Window
   const win = new THREE.Mesh(
     new THREE.BoxGeometry(0.45, 0.45, 0.1),
     toonMat({ color: '#a0e0f0' }),
@@ -154,7 +149,6 @@ function buildTower(): THREE.Group {
   addOutline(base, '#2a1a0a', 1.02);
   g.add(base);
 
-  // Stripes
   for (let i = 0; i < 3; i++) {
     const stripe = new THREE.Mesh(
       new THREE.CylinderGeometry(0.95, 0.95, 0.18, 12),
@@ -164,7 +158,6 @@ function buildTower(): THREE.Group {
     g.add(stripe);
   }
 
-  // Lantern housing
   const housing = new THREE.Mesh(
     new THREE.CylinderGeometry(0.55, 0.55, 0.6, 8),
     toonMat({ color: PALETTE.woodDark }),
@@ -188,7 +181,6 @@ function buildTower(): THREE.Group {
   addOutline(cap, '#2a1a0a', 1.04);
   g.add(cap);
 
-  // Warm point light
   const light = new THREE.PointLight(PALETTE.warm, 0.8, 10, 2);
   light.position.y = 4.5;
   g.add(light);
@@ -199,7 +191,6 @@ function buildTower(): THREE.Group {
 /** A wishing well for the central plaza. */
 function buildWell(): THREE.Group {
   const g = new THREE.Group();
-  // Stone base
   const base = new THREE.Mesh(
     new THREE.CylinderGeometry(1.0, 1.1, 0.6, 12),
     toonMat({ color: PALETTE.stone }),
@@ -208,7 +199,6 @@ function buildWell(): THREE.Group {
   addOutline(base, '#2a1a0a', 1.03);
   g.add(base);
 
-  // Water disc inside
   const water = new THREE.Mesh(
     new THREE.CylinderGeometry(0.85, 0.85, 0.05, 12),
     toonMat({ color: PALETTE.water, emissive: PALETTE.water, emissiveIntensity: 0.2 }),
@@ -216,7 +206,6 @@ function buildWell(): THREE.Group {
   water.position.y = 0.62;
   g.add(water);
 
-  // Two posts + crossbar
   const postL = new THREE.Mesh(
     new THREE.BoxGeometry(0.18, 1.4, 0.18),
     toonMat({ color: PALETTE.woodDark }),
@@ -237,7 +226,6 @@ function buildWell(): THREE.Group {
   addOutline(beam, '#2a1a0a', 1.04);
   g.add(beam);
 
-  // Roof
   const roof = new THREE.Mesh(
     new THREE.ConeGeometry(1.0, 0.7, 6),
     toonMat({ color: PALETTE.roof }),
@@ -253,7 +241,6 @@ function buildWell(): THREE.Group {
 function buildPlazaMarker(spec: PlazaSpec): THREE.Group {
   const g = new THREE.Group();
 
-  // Stone platform
   const plat = new THREE.Mesh(
     new THREE.CylinderGeometry(2.4, 2.6, 0.3, 16),
     toonMat({ color: PALETTE.stoneHi }),
@@ -269,31 +256,20 @@ function buildPlazaMarker(spec: PlazaSpec): THREE.Group {
   innerDisc.position.y = 0.17;
   g.add(innerDisc);
 
-  // Plaza shadow
   const sh = shadowDisc(2.4, 0.2);
   sh.position.y = 0.31;
   g.add(sh);
 
-  // Themed building/marker
   let marker: THREE.Group;
   switch (spec.style) {
     case 'forge':
-      marker = buildHouse({
-        bodyColor: '#8a5a3a', roofColor: PALETTE.roof, w: 2.2, h: 1.6, d: 1.8,
-        doorColor: '#5a3a22',
-      });
+      marker = buildHouse({ bodyColor: '#8a5a3a', roofColor: PALETTE.roof, w: 2.2, h: 1.6, d: 1.8, doorColor: '#5a3a22' });
       break;
     case 'library':
-      marker = buildHouse({
-        bodyColor: '#d8c890', roofColor: PALETTE.roofDark, w: 2.6, h: 1.8, d: 2.0,
-        doorColor: PALETTE.woodDark,
-      });
+      marker = buildHouse({ bodyColor: '#d8c890', roofColor: PALETTE.roofDark, w: 2.6, h: 1.8, d: 2.0, doorColor: PALETTE.woodDark });
       break;
     case 'workshop':
-      marker = buildHouse({
-        bodyColor: '#9a7050', roofColor: '#5a8a3a', w: 2.0, h: 1.5, d: 2.2,
-        doorColor: PALETTE.woodDark,
-      });
+      marker = buildHouse({ bodyColor: '#9a7050', roofColor: '#5a8a3a', w: 2.0, h: 1.5, d: 2.2, doorColor: PALETTE.woodDark });
       break;
     case 'tower':
       marker = buildTower();
@@ -303,7 +279,6 @@ function buildPlazaMarker(spec: PlazaSpec): THREE.Group {
       break;
     case 'plaza':
     default:
-      // A simple shrine with a flag
       marker = new THREE.Group();
       const shrine = new THREE.Mesh(
         new THREE.BoxGeometry(1.6, 0.8, 1.2),
@@ -333,25 +308,36 @@ function buildPlazaMarker(spec: PlazaSpec): THREE.Group {
 
 export function buildIsland(scene: THREE.Scene): Island {
   const group = new THREE.Group();
-  const rx = WORLD.island.radiusX;
-  const rz = WORLD.island.radiusZ;
+  const W = WORLD.island.width;
+  const D = WORLD.island.depth;
   const surfY = WORLD.island.surfaceY;
 
-  // --- Grass surface (slightly subdivided oval disk) ---
-  const grassGeom = new THREE.CircleGeometry(1, 96);
-  grassGeom.scale(rx, rz, 1);
+  // --- Grass surface (rounded rectangle, subdivided for jitter) ---
+  // We use a Shape with rounded corners and a custom triangulated mesh.
+  const cornerR = 14;
+  const shape = new THREE.Shape();
+  shape.moveTo(-W/2 + cornerR, -D/2);
+  shape.lineTo(W/2 - cornerR, -D/2);
+  shape.quadraticCurveTo(W/2, -D/2, W/2, -D/2 + cornerR);
+  shape.lineTo(W/2, D/2 - cornerR);
+  shape.quadraticCurveTo(W/2, D/2, W/2 - cornerR, D/2);
+  shape.lineTo(-W/2 + cornerR, D/2);
+  shape.quadraticCurveTo(-W/2, D/2, -W/2, D/2 - cornerR);
+  shape.lineTo(-W/2, -D/2 + cornerR);
+  shape.quadraticCurveTo(-W/2, -D/2, -W/2 + cornerR, -D/2);
+
+  const grassGeom = new THREE.ShapeGeometry(shape, 48);
   grassGeom.rotateX(-Math.PI / 2);
+
+  // Subtle vertex jitter for hand-made feel.
   const pos = grassGeom.attributes.position;
   const rng = makeRng(WORLD.seed);
   for (let i = 0; i < pos.count; i++) {
     const x = pos.getX(i);
     const z = pos.getZ(i);
-    const dx = x / rx;
-    const dz = z / rz;
-    const d = Math.min(1, Math.hypot(dx, dz));
-    if (d > 0.1) {
-      const n = rngRange(rng, -0.18, 0.18) * (1 - d);
-      pos.setY(i, n);
+    const d = Math.min(1, Math.hypot(x / (W/2), z / (D/2)));
+    if (d > 0.05) {
+      pos.setY(i, rngRange(rng, -0.15, 0.15) * (1 - d));
     }
   }
   pos.needsUpdate = true;
@@ -361,15 +347,26 @@ export function buildIsland(scene: THREE.Scene): Island {
   grass.position.y = surfY;
   group.add(grass);
 
-  // Inner darker ring (gives the field a "worn path" look)
-  const innerGeom = new THREE.CircleGeometry(1, 64);
-  innerGeom.scale(rx * 0.78, rz * 0.78, 1);
+  // Inner darker rectangle (slightly inset) — gives the field a worn
+  // path look without an explicit grid of tiles.
+  const innerShape = new THREE.Shape();
+  const inW = W * 0.78, inD = D * 0.78, inR = cornerR * 0.8;
+  innerShape.moveTo(-inW/2 + inR, -inD/2);
+  innerShape.lineTo(inW/2 - inR, -inD/2);
+  innerShape.quadraticCurveTo(inW/2, -inD/2, inW/2, -inD/2 + inR);
+  innerShape.lineTo(inW/2, inD/2 - inR);
+  innerShape.quadraticCurveTo(inW/2, inD/2, inW/2 - inR, inD/2);
+  innerShape.lineTo(-inW/2 + inR, inD/2);
+  innerShape.quadraticCurveTo(-inW/2, inD/2, -inW/2, inD/2 - inR);
+  innerShape.lineTo(-inW/2, -inD/2 + inR);
+  innerShape.quadraticCurveTo(-inW/2, -inD/2, -inW/2 + inR, -inD/2);
+  const innerGeom = new THREE.ShapeGeometry(innerShape, 48);
   innerGeom.rotateX(-Math.PI / 2);
   const inner = new THREE.Mesh(innerGeom, toonMat({ color: PALETTE.grassDark }));
   inner.position.y = surfY + 0.005;
   group.add(inner);
 
-  // Center patch under the well / player spawn
+  // Center patch (under the well)
   const centerPatch = new THREE.Mesh(
     new THREE.CylinderGeometry(2.5, 2.5, 0.05, 16),
     toonMat({ color: PALETTE.grassHi }),
@@ -378,23 +375,36 @@ export function buildIsland(scene: THREE.Scene): Island {
   group.add(centerPatch);
 
   // --- Cliff underneath ---
-  const cliffGeom = new THREE.CylinderGeometry(1, 0.7, 7, 32, 1, false);
-  cliffGeom.scale(rx * 0.95, 1, rz * 0.95);
+  // A short beveled box follows the rounded-rect footprint.
+  const cliffGeom = new THREE.BoxGeometry(W * 0.95, 6, D * 0.95, 1, 1, 1);
   const cliff = new THREE.Mesh(cliffGeom, toonMat({ color: PALETTE.cliff }));
-  cliff.position.y = surfY - 3.5;
+  cliff.position.y = surfY - 3;
   addOutline(cliff, '#2a1a0a', 1.02);
   group.add(cliff);
 
+  // Tapered bottom
   const baseGeom = new THREE.ConeGeometry(1, 9, 24, 1);
-  baseGeom.scale(rx * 0.65, 1, rz * 0.65);
+  baseGeom.scale(W * 0.6, 1, D * 0.6);
   const base = new THREE.Mesh(baseGeom, toonMat({ color: PALETTE.cliffHi }));
-  base.position.y = surfY - 11;
+  base.position.y = surfY - 10;
   addOutline(base, '#2a1a0a', 1.02);
   group.add(base);
 
   // --- Water ring ---
-  const waterGeom = new THREE.RingGeometry(1, 1, 64, 1);
-  waterGeom.scale(rx * 1.6, rz * 1.6, 1);
+  // A big rounded rectangle in the same shape as the island, scaled
+  // outward, gives the "island surrounded by water" look.
+  const waterShape = new THREE.Shape();
+  const wOuter = W * 1.4, wDepth = D * 1.4, wR = cornerR * 1.4;
+  waterShape.moveTo(-wOuter/2 + wR, -wDepth/2);
+  waterShape.lineTo(wOuter/2 - wR, -wDepth/2);
+  waterShape.quadraticCurveTo(wOuter/2, -wDepth/2, wOuter/2, -wDepth/2 + wR);
+  waterShape.lineTo(wOuter/2, wDepth/2 - wR);
+  waterShape.quadraticCurveTo(wOuter/2, wDepth/2, wOuter/2 - wR, wDepth/2);
+  waterShape.lineTo(-wOuter/2 + wR, wDepth/2);
+  waterShape.quadraticCurveTo(-wOuter/2, wDepth/2, -wOuter/2, wDepth/2 - wR);
+  waterShape.lineTo(-wOuter/2, -wDepth/2 + wR);
+  waterShape.quadraticCurveTo(-wOuter/2, -wDepth/2, -wOuter/2 + wR, -wDepth/2);
+  const waterGeom = new THREE.ShapeGeometry(waterShape, 64);
   waterGeom.rotateX(-Math.PI / 2);
   const waterMat = toonMat({ color: PALETTE.water, transparent: true, opacity: 0.85 });
   const water = new THREE.Mesh(waterGeom, waterMat);
@@ -412,30 +422,27 @@ export function buildIsland(scene: THREE.Scene): Island {
     plazas.set(spec.id, plaza);
   }
 
-  // --- Trees ---
+  // --- Trees scattered around the plaza grid ---
   const treeSpots: Array<{ x: number; z: number; scale: number }> = [];
   let attempts = 0;
-  while (treeSpots.length < 18 && attempts < 300) {
+  while (treeSpots.length < 22 && attempts < 400) {
     attempts++;
-    const ang = rng() * Math.PI * 2;
-    const rr = Math.sqrt(rng()) * 0.85;
-    const x = Math.cos(ang) * rr * rx;
-    const z = Math.sin(ang) * rr * rz;
+    const x = (rng() - 0.5) * (W - 12);
+    const z = (rng() - 0.5) * (D - 12);
     let tooClose = false;
     for (const p of PLAZA_SPOTS) {
-      if (Math.hypot(p.x - x, p.z - z) < 4.5) { tooClose = true; break; }
+      if (Math.hypot(p.x - x, p.z - z) < 5) { tooClose = true; break; }
     }
     if (tooClose) continue;
     let treeClash = false;
     for (const t of treeSpots) {
-      if (Math.hypot(t.x - x, t.z - z) < 2.8) { treeClash = true; break; }
+      if (Math.hypot(t.x - x, t.z - z) < 3) { treeClash = true; break; }
     }
     if (treeClash) continue;
     treeSpots.push({ x, z, scale: 0.7 + rng() * 0.5 });
   }
   for (const t of treeSpots) {
     const tree = buildTree(rng);
-    // Shadow first (so it renders below the tree)
     const sh = shadowDisc(0.8 * t.scale, 0.28);
     sh.position.set(t.x, 0.02, t.z);
     group.add(sh);
@@ -444,12 +451,10 @@ export function buildIsland(scene: THREE.Scene): Island {
     group.add(tree);
   }
 
-  // --- A few decorative flowers / bushes ---
-  for (let i = 0; i < 30; i++) {
-    const ang = rng() * Math.PI * 2;
-    const rr = Math.sqrt(rng()) * 0.85;
-    const x = Math.cos(ang) * rr * rx;
-    const z = Math.sin(ang) * rr * rz;
+  // --- Decorative bushes/flowers ---
+  for (let i = 0; i < 40; i++) {
+    const x = (rng() - 0.5) * (W - 6);
+    const z = (rng() - 0.5) * (D - 6);
     let tooClose = false;
     for (const p of PLAZA_SPOTS) {
       if (Math.hypot(p.x - x, p.z - z) < 3) { tooClose = true; break; }
@@ -471,23 +476,27 @@ export function buildIsland(scene: THREE.Scene): Island {
   }
 
   // --- Functions exposed ---
+  // Clamp to a rounded rectangle (not just an AABB).
   const clamp = (x: number, z: number): { x: number; z: number } => {
     const margin = 0.5;
-    const nx = THREE.MathUtils.clamp(x, -rx + margin, rx - margin);
-    const nz = THREE.MathUtils.clamp(z, -rz + margin, rz - margin);
-    const dx = nx / (rx - margin);
-    const dz = nz / (rz - margin);
-    const d = Math.hypot(dx, dz);
-    if (d > 1) {
-      return { x: nx / d, z: nz / d };
+    const halfW = W/2 - margin;
+    const halfD = D/2 - margin;
+    const nx = THREE.MathUtils.clamp(x, -halfW, halfW);
+    const nz = THREE.MathUtils.clamp(z, -halfD, halfD);
+    // Pull back from rounded corners: if we're in a corner region, project
+    // toward the center to stay within the rounded shape.
+    const dx = nx - Math.max(-halfW + cornerR, Math.min(halfW - cornerR, nx));
+    const dz = nz - Math.max(-halfD + cornerR, Math.min(halfD - cornerR, nz));
+    const dist = Math.hypot(dx, dz);
+    if (dist > cornerR) {
+      const k = cornerR / dist;
+      return { x: Math.max(-halfW + cornerR, Math.min(halfW - cornerR, nx)) + dx * k, z: nz };
     }
     return { x: nx, z: nz };
   };
 
   const isWalkable = (x: number, z: number): boolean => {
-    const dx = x / rx;
-    const dz = z / rz;
-    return Math.hypot(dx, dz) < 0.95;
+    return Math.abs(x) < W/2 - 1 && Math.abs(z) < D/2 - 1;
   };
 
   return { group, clamp, isWalkable, plazas };

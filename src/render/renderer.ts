@@ -28,6 +28,12 @@ export function addLights(scene: THREE.Scene): void {
   const ambient = new THREE.AmbientLight(0xfff0d0, 0.95);
   scene.add(ambient);
 
+  // Hemisphere light: blue sky color from above, warm sand color from below.
+  // This makes the world's colors look coherent even though the actual
+  // skybox dome is mostly out of view (camera looks down).
+  const hemi = new THREE.HemisphereLight(0x88c8e8, 0xc8a878, 0.45);
+  scene.add(hemi);
+
   // Key light from the sun (warm yellow, high angle).
   const dir = new THREE.DirectionalLight(0xfff2c0, 0.65);
   dir.position.set(40, 60, -30);
