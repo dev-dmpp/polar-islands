@@ -14,8 +14,10 @@ export class FollowCamera {
   private zoom: number;
 
   constructor() {
-    this.camera = new THREE.PerspectiveCamera(50, 1, 0.1, 4000);
-    this.camera.position.set(0, WORLD.camera.initialZoom, WORLD.camera.initialZoom * 0.65);
+    this.camera = new THREE.PerspectiveCamera(60, 1, 0.1, 4000);
+    // Top-down isometric (Stardew / AC feel): high Y, very small Z,
+    // looking straight down with a slight tilt.
+    this.camera.position.set(0, WORLD.camera.initialZoom, WORLD.camera.initialZoom * 0.18);
     this.camera.lookAt(0, 0, 0);
     this.curLook.set(0, 0, 0);
     this.zoom = WORLD.camera.initialZoom;
@@ -39,26 +41,24 @@ export class FollowCamera {
    */
   update(dt: number, playerPos: THREE.Vector3, playerRotY: number): void {
     const cf = WORLD.camera;
-    // Position offset relative to facing: behind the player along -forward.
-    const sin = Math.sin(playerRotY);
-    const cos = Math.cos(playerRotY);
-    // forward = (sin, 0, cos) in world (X-Z plane, +Z = up on screen)
-    const behindX = -sin * this.zoom * 0.6;
-    const behindZ = -cos * this.zoom * 0.6;
+    // Top-down isometric: camera sits mostly above the player with a small
+    // Z offset for a slight tilt. The camera does NOT rotate with the player
+    // — this is a fixed top-down view, not a third-person follow cam.
+    void playerRotY;
     this.targetPos.set(
-      playerPos.x + behindX,
+      playerPos.x,
       this.zoom,
-      playerPos.z + behindZ,
+      playerPos.z + this.zoom * 0.18,
     );
-    // Smooth follow
     const a = 1 - Math.pow(1 - cf.followLerp, dt * 60);
     this.camera.position.lerp(this.targetPos, a);
 
-    // Look slightly ahead
+    // Look at a point slightly forward of the player in world +Z (which is
+    // "down" on screen due to the camera's tilt).
     this.targetLook.set(
-      playerPos.x + sin * cf.lookAhead,
+      playerPos.x + cf.lookAhead,
       playerPos.y,
-      playerPos.z + cos * cf.lookAhead,
+      playerPos.z + cf.lookAhead * 0.4,
     );
     this.curLook.lerp(this.targetLook, a);
     this.camera.lookAt(this.curLook);

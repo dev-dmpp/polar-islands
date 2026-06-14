@@ -16,6 +16,7 @@ import { createHud, type HudApi } from '../ui/hud';
 import { createLanding, type LandingApi } from '../ui/landing';
 import { DialogBubble } from '../ui/dialog';
 import { PLAZAS, CONTACT_NPC } from '../content/cv';
+import { WORLD } from './config';
 
 interface PlazaInfo {
   id: string;
@@ -97,11 +98,11 @@ export class Game {
     this.landing = createLanding(hudContainer);
     this.dialog = new DialogBubble(hudContainer);
 
-    // Initial camera snap behind the player
+    // Initial camera snap above the player
     this.cameraCtl.camera.position.set(
       this.player.position.x,
-      WORLD_CAM_Y,
-      this.player.position.z + WORLD_CAM_Z,
+      WORLD.camera.initialZoom,
+      this.player.position.z + WORLD.camera.initialZoom * 0.18,
     );
 
     // Show landing. The world's first paint is already done (sky + island
@@ -147,11 +148,11 @@ export class Game {
   }
 
   private resetCamera(): void {
-    // Re-snap camera to behind the player.
+    // Re-snap camera to above the player.
     this.cameraCtl.camera.position.set(
       this.player.position.x,
-      WORLD_CAM_Y,
-      this.player.position.z + WORLD_CAM_Z,
+      WORLD.camera.initialZoom,
+      this.player.position.z + WORLD.camera.initialZoom * 0.18,
     );
   }
 
@@ -261,8 +262,3 @@ export class Game {
     requestAnimationFrame(this.loop);
   };
 }
-
-// Camera follow offset (matches the FollowCamera zoom defaults; used to snap
-// the camera on first frame and on reset).
-const WORLD_CAM_Y = 22;
-const WORLD_CAM_Z = 18;

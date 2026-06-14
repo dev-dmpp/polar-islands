@@ -61,9 +61,9 @@ export const WORLD = {
     offsetZ: 14,
     lookAhead: 1.5,
     followLerp: 0.10,
-    minZoom: 10,
-    maxZoom: 50,
-    initialZoom: 22,
+    minZoom: 14,
+    maxZoom: 60,
+    initialZoom: 36,
   },
   /** Rng seed for procedural world. */
   seed: 'polar-aurora',
