@@ -1,66 +1,68 @@
 /**
- * Camera 3/4 top-down follow. Offset is fixed (Y up, Z back) and the camera
- * follows the player with a smooth lerp. The look-at point sits slightly
- * ahead of the player in the player's facing direction.
+ * Top-down orthographic camera with a slight tilt — Animal Crossing New
+ * Horizons / Stardew Valley feel.
  */
 import * as THREE from 'three';
 import { WORLD } from '../core/config';
 
+const CAM_HEIGHT = 500;
+const TILT = 0.38;
+
 export class FollowCamera {
-  readonly camera: THREE.PerspectiveCamera;
-  private targetPos = new THREE.Vector3();
-  private targetLook = new THREE.Vector3();
-  private curLook = new THREE.Vector3();
+  readonly camera: THREE.OrthographicCamera;
+  private aspect = 1;
   private zoom: number;
+  private targetPos = new THREE.Vector3();
+  private curPos = new THREE.Vector3();
 
   constructor() {
-    this.camera = new THREE.PerspectiveCamera(60, 1, 0.1, 4000);
-    // Top-down isometric (Stardew / AC feel): high Y, very small Z,
-    // looking straight down with a slight tilt.
-    this.camera.position.set(0, WORLD.camera.initialZoom, WORLD.camera.initialZoom * 0.18);
-    this.camera.lookAt(0, 0, 0);
-    this.curLook.set(0, 0, 0);
     this.zoom = WORLD.camera.initialZoom;
+    this.camera = new THREE.OrthographicCamera(
+      -this.zoom, this.zoom,
+       this.zoom, -this.zoom,
+       0.1, 2000,
+    );
+    // Default up. The world geometry is rotated 180° around Y so that
+    // visually the +Z world axis maps to the top of the screen (the
+    // island's "north" stays at the top of the screen).
+    this.camera.up.set(0, 1, 0);
+    this.placeCameraAt(0, 0);
+    this.curPos.copy(this.camera.position);
+  }
+
+  private placeCameraAt(px: number, pz: number): void {
+    const offset = CAM_HEIGHT * Math.tan(TILT);
+    this.camera.position.set(px, CAM_HEIGHT, pz + offset);
+    this.camera.lookAt(px, 0, pz);
   }
 
   setAspect(aspect: number): void {
-    this.camera.aspect = aspect;
+    this.aspect = aspect;
+    this.recomputeFrustum();
+  }
+
+  private recomputeFrustum(): void {
+    const halfH = this.zoom;
+    const halfW = halfH * this.aspect;
+    this.camera.left = -halfW;
+    this.camera.right = halfW;
+    this.camera.top = halfH;
+    this.camera.bottom = -halfH;
     this.camera.updateProjectionMatrix();
   }
 
   setZoom(z: number): void {
     this.zoom = THREE.MathUtils.clamp(z, WORLD.camera.minZoom, WORLD.camera.maxZoom);
+    this.recomputeFrustum();
   }
 
   getZoom(): number { return this.zoom; }
 
-  /**
-   * Update the camera. `playerPos` is the player position, `playerRotY` is the
-   * facing angle in radians (0 = +Z, increases counter-clockwise viewed from
-   * above).
-   */
-  update(dt: number, playerPos: THREE.Vector3, playerRotY: number): void {
-    const cf = WORLD.camera;
-    // Top-down isometric: camera sits mostly above the player with a small
-    // Z offset for a slight tilt. The camera does NOT rotate with the player
-    // — this is a fixed top-down view, not a third-person follow cam.
-    void playerRotY;
-    this.targetPos.set(
-      playerPos.x,
-      this.zoom,
-      playerPos.z + this.zoom * 0.18,
-    );
-    const a = 1 - Math.pow(1 - cf.followLerp, dt * 60);
-    this.camera.position.lerp(this.targetPos, a);
-
-    // Look at a point slightly forward of the player in world +Z (which is
-    // "down" on screen due to the camera's tilt).
-    this.targetLook.set(
-      playerPos.x + cf.lookAhead,
-      playerPos.y,
-      playerPos.z + cf.lookAhead * 0.4,
-    );
-    this.curLook.lerp(this.targetLook, a);
-    this.camera.lookAt(this.curLook);
+  update(dt: number, playerPos: THREE.Vector3, _playerRotY: number): void {
+    const lerpAmt = 1 - Math.pow(1 - WORLD.camera.followLerp, dt * 60);
+    this.targetPos.set(playerPos.x, CAM_HEIGHT, playerPos.z + CAM_HEIGHT * Math.tan(TILT));
+    this.curPos.lerp(this.targetPos, lerpAmt);
+    this.camera.position.copy(this.curPos);
+    this.camera.lookAt(this.curPos.x, 0, this.curPos.z);
   }
 }

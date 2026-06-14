@@ -1,15 +1,15 @@
 /**
- * Procedural starry skybox with a 3-stop vertical gradient. A flat inverted
- * sphere with a custom shader; no textures required.
+ * Sky: soft daytime sky with a sun. Animal Crossing / Stardew Valley look:
+ * warm pastel gradient (light blue at top, warm cream at horizon) instead
+ * of the previous deep purple night sky.
  */
 import * as THREE from 'three';
 import { PALETTE } from '../core/config';
 
 const SKY_RADIUS = 1800;
-const STAR_COUNT = 700;
 
-export function buildSky(scene: THREE.Scene): { mesh: THREE.Mesh; stars: THREE.Points } {
-  // Gradient sky dome
+export function buildSky(scene: THREE.Scene): { mesh: THREE.Mesh; sun: THREE.Mesh } {
+  // Sky dome with vertical gradient.
   const skyGeom = new THREE.SphereGeometry(SKY_RADIUS, 32, 16);
   const skyMat = new THREE.ShaderMaterial({
     side: THREE.BackSide,
@@ -47,47 +47,21 @@ export function buildSky(scene: THREE.Scene): { mesh: THREE.Mesh; stars: THREE.P
   mesh.renderOrder = -1000;
   scene.add(mesh);
 
-  // Stars
-  const positions = new Float32Array(STAR_COUNT * 3);
-  const colors = new Float32Array(STAR_COUNT * 3);
-  const sizes = new Float32Array(STAR_COUNT);
-  const tints = [
-    new THREE.Color(0xffffff),
-    new THREE.Color(0xc8e0ff),
-    new THREE.Color(0xffe0c8),
-    new THREE.Color(0xffc8e0),
-    new THREE.Color(0xc8ffe0),
-  ];
-  for (let i = 0; i < STAR_COUNT; i++) {
-    const u = Math.random();
-    const v = Math.random();
-    const theta = 2 * Math.PI * u;
-    const phi = Math.acos(2 * v - 1);
-    const r = SKY_RADIUS * 0.95;
-    positions[i * 3 + 0] = r * Math.sin(phi) * Math.cos(theta);
-    positions[i * 3 + 1] = r * Math.cos(phi);
-    positions[i * 3 + 2] = r * Math.sin(phi) * Math.sin(theta);
-    const tint = tints[Math.floor(Math.random() * tints.length)];
-    colors[i * 3 + 0] = tint.r;
-    colors[i * 3 + 1] = tint.g;
-    colors[i * 3 + 2] = tint.b;
-    sizes[i] = Math.random() < 0.85 ? (1.5 + Math.random() * 1.5) : (3 + Math.random() * 2.5);
-  }
-  const starGeom = new THREE.BufferGeometry();
-  starGeom.setAttribute('position', new THREE.BufferAttribute(positions, 3));
-  starGeom.setAttribute('color', new THREE.BufferAttribute(colors, 3));
-  starGeom.setAttribute('size', new THREE.BufferAttribute(sizes, 1));
-  const starMat = new THREE.PointsMaterial({
-    size: 2.2,
-    sizeAttenuation: false,
-    vertexColors: true,
+  // A soft sun disc placed at a high angle. Lit, unlit material so it
+  // glows with its own color regardless of lighting.
+  const sunGeom = new THREE.CircleGeometry(28, 24);
+  const sunMat = new THREE.MeshBasicMaterial({
+    color: new THREE.Color(PALETTE.sun),
     transparent: true,
-    opacity: 0.95,
+    opacity: 0.9,
     depthWrite: false,
   });
-  const stars = new THREE.Points(starGeom, starMat);
-  stars.renderOrder = -999;
-  scene.add(stars);
+  const sun = new THREE.Mesh(sunGeom, sunMat);
+  // Place it in the upper portion of the sky, off-center to the back.
+  sun.position.set(80, 600, -800);
+  sun.lookAt(0, 0, 0);
+  sun.renderOrder = -998;
+  scene.add(sun);
 
-  return { mesh, stars };
+  return { mesh, sun };
 }

@@ -20,17 +20,17 @@ export function createRenderer(container: HTMLElement): THREE.WebGLRenderer {
 }
 
 export function addLights(scene: THREE.Scene): void {
-  // Strong ambient for the toon look — no harsh shadows in F0.
-  const ambient = new THREE.AmbientLight(0xc0d0ff, 0.85);
+  // Bright warm ambient — AC daytime feel.
+  const ambient = new THREE.AmbientLight(0xfff0d0, 0.95);
   scene.add(ambient);
 
-  // Directional light to give the toon gradient some direction.
-  const dir = new THREE.DirectionalLight(0xffe8b0, 0.55);
-  dir.position.set(20, 30, 10);
+  // Key light from the sun (warm yellow, high angle).
+  const dir = new THREE.DirectionalLight(0xfff2c0, 0.65);
+  dir.position.set(40, 60, -30);
   scene.add(dir);
 
-  // Cool fill from the opposite side.
-  const fill = new THREE.DirectionalLight(0x6080ff, 0.25);
-  fill.position.set(-20, 10, -20);
+  // Cool sky fill from the opposite side.
+  const fill = new THREE.DirectionalLight(0xa0c8e0, 0.30);
+  fill.position.set(-40, 30, 30);
   scene.add(fill);
 }

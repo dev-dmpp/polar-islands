@@ -16,7 +16,6 @@ import { createHud, type HudApi } from '../ui/hud';
 import { createLanding, type LandingApi } from '../ui/landing';
 import { DialogBubble } from '../ui/dialog';
 import { PLAZAS, CONTACT_NPC } from '../content/cv';
-import { WORLD } from './config';
 
 interface PlazaInfo {
   id: string;
@@ -67,6 +66,11 @@ export class Game {
 
     // World
     this.island = buildIsland(this.scene);
+    // Outlines + procedural geometry sometimes produce wrong bounding
+    // spheres, which causes Three.js to frustum-cull entire islands. The
+    // scene is small enough that culling is not worth the risk; disable
+    // it once at scene setup.
+    this.scene.traverse((o) => { o.frustumCulled = false; });
     this.plazas = [
       ...PLAZAS.map(p => ({
         id: p.id,
@@ -98,11 +102,16 @@ export class Game {
     this.landing = createLanding(hudContainer);
     this.dialog = new DialogBubble(hudContainer);
 
-    // Initial camera snap above the player
+    // Initial camera snap above the player (orthographic tilted top-down).
     this.cameraCtl.camera.position.set(
       this.player.position.x,
-      WORLD.camera.initialZoom,
-      this.player.position.z + WORLD.camera.initialZoom * 0.18,
+      500,
+      this.player.position.z + 500 * Math.tan(0.38),
+    );
+    this.cameraCtl.camera.lookAt(
+      this.player.position.x,
+      0,
+      this.player.position.z,
     );
 
     // Show landing. The world's first paint is already done (sky + island
@@ -129,9 +138,10 @@ export class Game {
       this.save.playerRotY = this.player.rotY;
       persistSave(this.save);
     }, 5000);
-
+    // Mark running and expose for debugging.
     this.running = true;
     this.clock.start();
+    (window as unknown as { __polarGame: Game }).__polarGame = this;
     this.loop();
   }
 
@@ -148,11 +158,16 @@ export class Game {
   }
 
   private resetCamera(): void {
-    // Re-snap camera to above the player.
+    // Re-snap camera (orthographic tilted top-down).
     this.cameraCtl.camera.position.set(
       this.player.position.x,
-      WORLD.camera.initialZoom,
-      this.player.position.z + WORLD.camera.initialZoom * 0.18,
+      500,
+      this.player.position.z + 500 * Math.tan(0.38),
+    );
+    this.cameraCtl.camera.lookAt(
+      this.player.position.x,
+      0,
+      this.player.position.z,
     );
   }
 

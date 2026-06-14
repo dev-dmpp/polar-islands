@@ -48,7 +48,7 @@ export function toonMat(opts: ToonOptions): THREE.MeshToonMaterial {
  * Add an inverted-hull outline to a mesh. Adds the outline as a child so it
  * follows the mesh's transform automatically.
  */
-export function addOutline(mesh: THREE.Mesh, color = '#0a0a1a', scale = 1.05): THREE.Mesh {
+export function addOutline(mesh: THREE.Mesh, color = '#2a1a0a', scale = 1.03): THREE.Mesh {
   const outline = new THREE.Mesh(
     mesh.geometry,
     new THREE.MeshBasicMaterial({

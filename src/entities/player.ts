@@ -17,6 +17,7 @@ export class Player {
   private rightLeg: THREE.Mesh;
   private leftArm: THREE.Mesh;
   private rightArm: THREE.Mesh;
+  private shadow: THREE.Mesh;
 
   private target: THREE.Vector3 | null = null;
   private facing = 0;          // current rot.y (radians)
@@ -29,6 +30,16 @@ export class Player {
   constructor() {
     this.group = new THREE.Group();
     this.group.position.set(0, 0, 8);
+
+    // Soft round shadow disc beneath the player.
+    const shadowGeom = new THREE.CircleGeometry(0.55, 16);
+    shadowGeom.rotateX(-Math.PI / 2);
+    const shadowMat = new THREE.MeshBasicMaterial({
+      color: 0x000000, transparent: true, opacity: 0.32, depthWrite: false,
+    });
+    this.shadow = new THREE.Mesh(shadowGeom, shadowMat);
+    this.shadow.position.y = 0.01;
+    this.group.add(this.shadow);
 
     // Body
     this.body = new THREE.Mesh(
