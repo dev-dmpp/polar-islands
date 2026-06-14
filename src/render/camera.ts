@@ -67,9 +67,8 @@ export class FollowCamera {
     );
     this.curPos.lerp(this.targetPos, lerpAmt);
     this.camera.position.copy(this.curPos);
-    // Look at the island center (z=0), not the player. The player
-    // may be on either side of center; the camera always frames the
-    // whole island.
-    this.camera.lookAt(this.curPos.x, 0, 0);
+    // AC-style follow: the camera always looks at the player, so the
+    // player stays centered on screen and the world scrolls past.
+    this.camera.lookAt(playerPos.x, 0, playerPos.z);
   }
 }

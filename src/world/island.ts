@@ -20,6 +20,8 @@ export interface Island {
   isWalkable(x: number, z: number): boolean;
   /** Plaza mesh groups, indexed by plaza id. */
   plazas: Map<string, THREE.Group>;
+  /** Animate water + lantern (called from the main loop). */
+  update(elapsed: number, playerXZ: { x: number; z: number }): void;
 }
 
 interface PlazaSpec {
@@ -263,13 +265,13 @@ function buildPlazaMarker(spec: PlazaSpec): THREE.Group {
   let marker: THREE.Group;
   switch (spec.style) {
     case 'forge':
-      marker = buildHouse({ bodyColor: '#8a5a3a', roofColor: PALETTE.roof, w: 2.2, h: 1.6, d: 1.8, doorColor: '#5a3a22' });
+      marker = buildHouse({ bodyColor: '#8a5a3a', roofColor: PALETTE.roof, w: 3.5, h: 2.6, d: 2.9, doorColor: '#5a3a22' });
       break;
     case 'library':
-      marker = buildHouse({ bodyColor: '#d8c890', roofColor: PALETTE.roofDark, w: 2.6, h: 1.8, d: 2.0, doorColor: PALETTE.woodDark });
+      marker = buildHouse({ bodyColor: '#d8c890', roofColor: PALETTE.roofDark, w: 4.2, h: 2.9, d: 3.2, doorColor: PALETTE.woodDark });
       break;
     case 'workshop':
-      marker = buildHouse({ bodyColor: '#9a7050', roofColor: '#5a8a3a', w: 2.0, h: 1.5, d: 2.2, doorColor: PALETTE.woodDark });
+      marker = buildHouse({ bodyColor: '#9a7050', roofColor: '#5a8a3a', w: 3.2, h: 2.4, d: 3.5, doorColor: PALETTE.woodDark });
       break;
     case 'tower':
       marker = buildTower();
@@ -281,24 +283,24 @@ function buildPlazaMarker(spec: PlazaSpec): THREE.Group {
     default:
       marker = new THREE.Group();
       const shrine = new THREE.Mesh(
-        new THREE.BoxGeometry(1.6, 0.8, 1.2),
+        new THREE.BoxGeometry(2.6, 1.3, 1.9),
         toonMat({ color: PALETTE.woodHi }),
       );
-      shrine.position.y = 0.4;
+      shrine.position.y = 0.65;
       addOutline(shrine, '#2a1a0a', 1.03);
       marker.add(shrine);
       const flagPole = new THREE.Mesh(
-        new THREE.CylinderGeometry(0.05, 0.05, 1.6, 6),
+        new THREE.CylinderGeometry(0.05, 0.05, 2.6, 6),
         toonMat({ color: PALETTE.woodDark }),
       );
-      flagPole.position.y = 1.6;
+      flagPole.position.y = 2.6;
       addOutline(flagPole, '#2a1a0a', 1.05);
       marker.add(flagPole);
       const flag = new THREE.Mesh(
-        new THREE.BoxGeometry(0.6, 0.4, 0.04),
+        new THREE.BoxGeometry(1.0, 0.7, 0.04),
         toonMat({ color: PALETTE.npc, side: THREE.DoubleSide }),
       );
-      flag.position.set(0.3, 2.0, 0);
+      flag.position.set(0.5, 3.3, 0);
       marker.add(flag);
       break;
   }
@@ -382,23 +384,52 @@ export function buildIsland(scene: THREE.Scene): Island {
   base.position.y = surfY - 10;
   group.add(base);
 
-  // --- Water plane (huge, off-island) ---
-  // A flat large plane sits at the waterline, color turquesa. The island
-  // sits on top of it, so the water "wraps around" the island up to the
-  // horizon. Single plane, no outline (water is supposed to be smooth).
-  const waterGeom = new THREE.PlaneGeometry(400, 400, 1, 1);
+  // --- Water plane (large, with animated waves + vertex colors) ---
+  // The plane is subdivided so we can animate vertex Y for a subtle
+  // "shimmer" effect, and tint each vertex from a soft near-shore
+  // color to a deeper off-shore color — no flat single-color sea.
+  const waterGeom = new THREE.PlaneGeometry(220, 220, 48, 48);
   waterGeom.rotateX(-Math.PI / 2);
-  const waterMat = toonMat({ color: PALETTE.water, transparent: true, opacity: 0.85 });
+  // Per-vertex colors: near (light turquoise) → far (deeper teal)
+  const wPos = waterGeom.attributes.position;
+  const wColors = new Float32Array(wPos.count * 3);
+  const cNear = new THREE.Color(PALETTE.waterHi);
+  const cFar  = new THREE.Color(PALETTE.water);
+  for (let i = 0; i < wPos.count; i++) {
+    const x = wPos.getX(i);
+    const z = wPos.getZ(i);
+    const r = Math.min(1, Math.hypot(x, z) / 110);
+    const c = cNear.clone().lerp(cFar, r);
+    wColors[i*3]   = c.r;
+    wColors[i*3+1] = c.g;
+    wColors[i*3+2] = c.b;
+  }
+  waterGeom.setAttribute('color', new THREE.BufferAttribute(wColors, 3));
+  const waterMat = new THREE.MeshToonMaterial({
+    vertexColors: true,
+    transparent: true,
+    opacity: 0.92,
+  });
   const water = new THREE.Mesh(waterGeom, waterMat);
   water.position.y = surfY - 0.05;
+  // Cache the original X/Z so we can animate Y with sine.
+  const waterBaseY = water.position.y;
+  const waterVerts = waterGeom.attributes.position;
+  const waterOriginXZ = new Float32Array(waterVerts.count * 2);
+  for (let i = 0; i < waterVerts.count; i++) {
+    waterOriginXZ[i*2]   = waterVerts.getX(i);
+    waterOriginXZ[i*2+1] = waterVerts.getZ(i);
+  }
   group.add(water);
 
-  // Ocean accent: a slightly lighter ring around the island (no
-  // outline) — gives the "shallow water" look and softens the hard
-  // edge between grass and water.
+  // Shoreline ring (no outline) — softens the cliff-water transition.
   const ringGeom = new THREE.RingGeometry(W * 0.5, W * 1.4, 64);
   ringGeom.rotateX(-Math.PI / 2);
-  const ringMat = toonMat({ color: PALETTE.waterHi, transparent: true, opacity: 0.45 });
+  const ringMat = new THREE.MeshBasicMaterial({
+    color: PALETTE.waterHi,
+    transparent: true,
+    opacity: 0.35,
+  });
   const ring = new THREE.Mesh(ringGeom, ringMat);
   ring.position.y = surfY - 0.03;
   group.add(ring);
@@ -431,7 +462,7 @@ export function buildIsland(scene: THREE.Scene): Island {
       if (Math.hypot(t.x - x, t.z - z) < 3) { treeClash = true; break; }
     }
     if (treeClash) continue;
-    treeSpots.push({ x, z, scale: 0.8 + rng() * 0.6 });
+    treeSpots.push({ x, z, scale: 1.5 + rng() * 0.8 });
   }
   for (const t of treeSpots) {
     const tree = buildTree(rng);
@@ -491,5 +522,22 @@ export function buildIsland(scene: THREE.Scene): Island {
     return Math.abs(x) < W/2 - 1 && Math.abs(z) < D/2 - 1;
   };
 
-  return { group, clamp, isWalkable, plazas };
+  // Animate water: each vertex bobs in Y with a sin of (xz + time).
+  // Two superimposed sines give a more organic ripple. Water far from
+  // the player moves more (so the player doesn't see a "stuck" sea).
+  const update = (elapsed: number, playerXZ: { x: number; z: number }): void => {
+    for (let i = 0; i < waterVerts.count; i++) {
+      const ox = waterOriginXZ[i*2];
+      const oz = waterOriginXZ[i*2+1];
+      const distToPlayer = Math.hypot(ox - playerXZ.x, oz - playerXZ.z);
+      const fade = Math.min(1, distToPlayer / 30); // 0 near, 1 far
+      const w1 = Math.sin(ox * 0.18 + elapsed * 0.9) * 0.18;
+      const w2 = Math.sin(oz * 0.22 + elapsed * 0.7) * 0.12;
+      waterVerts.setY(i, waterBaseY + (w1 + w2) * (0.4 + 0.6 * fade));
+    }
+    waterVerts.needsUpdate = true;
+    waterGeom.computeVertexNormals();
+  };
+
+  return { group, clamp, isWalkable, plazas, update };
 }

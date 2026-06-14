@@ -110,8 +110,8 @@ export class Game {
       dist * Math.sin(tilt),
       this.player.position.z + dist * Math.cos(tilt),
     );
-    // Look at island center (z=0) so the whole island is framed.
-    this.cameraCtl.camera.lookAt(this.player.position.x, 0, 0);
+    // AC-style: look at the player, so it stays centered.
+    this.cameraCtl.camera.lookAt(this.player.position.x, 0, this.player.position.z);
 
     // Show landing. The world's first paint is already done (sky + island
     // visible behind the landing overlay). Mark ready immediately; the
@@ -125,12 +125,10 @@ export class Game {
       this.hud.showHint('📄 El CV en PDF aún no está publicado. Vuelve pronto o escríbeme por Contacto.', 4500);
     });
 
-    // Dialog advance via click
-    this.renderer.domElement.addEventListener('click', () => {
-      if (this.inDialogPlaza) {
-        this.dialog.advance();
-      }
-    });
+    // NOTE: Dialog advance on click is handled in the main loop
+    // (popClick() is consumed there), so the canvas listener was
+    // removed. The main loop's unified click block also routes
+    // clicks to dialog.advance() when one is open.
 
     // Save loop
     setInterval(() => {
@@ -167,8 +165,8 @@ export class Game {
       dist * Math.sin(tilt),
       this.player.position.z + dist * Math.cos(tilt),
     );
-    // Look at island center (z=0) so the whole island is framed.
-    this.cameraCtl.camera.lookAt(this.player.position.x, 0, 0);
+    // AC-style: look at the player, so it stays centered.
+    this.cameraCtl.camera.lookAt(this.player.position.x, 0, this.player.position.z);
   }
 
   private getNearestPlaza(): PlazaInfo | null {
@@ -211,39 +209,47 @@ export class Game {
       this.cameraCtl.setZoom(this.cameraCtl.getZoom() + wheel * 0.02);
     }
 
-    // Continuous WASD/arrow movement. The target is set to a point far
-    // ahead in the input direction; Player.update() then moves toward it
-    // each frame, producing continuous walking, facing and walk cycle.
-    if (this.worldActive && !this.inDialogPlaza) {
+    // Unified movement: WASD/arrows take priority over click. The
+    // player always has at most ONE target. Each frame:
+    //   1. If a movement key is held → set target far in that direction.
+    //   2. Else if there's a pending click → set target to clicked point.
+    //   3. Else → clear target (player stops where they are).
+    //   Special: if a dialog is open, ANY click advances the dialog
+    //   (no movement).
+    if (this.worldActive && this.inDialogPlaza) {
+      // While in dialog, any click advances; the popClick is consumed.
+      const click = this.input.popClick();
+      if (click) this.dialog.advance();
+    } else if (this.worldActive) {
       const axis = this.input.getMoveAxis();
       if (axis.dx !== 0 || axis.dz !== 0) {
         // Target 100 units ahead (way past reachDist) so the player
-        // never "arrives" and keeps walking.
+        // never "arrives" and keeps walking while the key is held.
         this.player.setTarget(
           this.player.position.x + axis.dx * 100,
           this.player.position.z + axis.dz * 100,
         );
       } else {
-        // No key pressed: stop walking immediately.
-        this.player.clearTarget();
-      }
-    }
-
-    // Click to move (still works alongside WASD)
-    if (this.worldActive && !this.inDialogPlaza) {
-      const click = this.input.popClick();
-      if (click && !click.right) {
-        // Raycast to ground plane (y = 0)
-        const ndc = new THREE.Vector2();
-        const rect = this.renderer.domElement.getBoundingClientRect();
-        ndc.x = ((click.x - rect.left) / rect.width) * 2 - 1;
-        ndc.y = -((click.y - rect.top) / rect.height) * 2 + 1;
-        const ray = new THREE.Raycaster();
-        ray.setFromCamera(ndc, this.cameraCtl.camera);
-        const plane = new THREE.Plane(new THREE.Vector3(0, 1, 0), 0);
-        const hit = new THREE.Vector3();
-        if (ray.ray.intersectPlane(plane, hit) && this.island.isWalkable(hit.x, hit.z)) {
-          this.player.setTarget(hit.x, hit.z);
+        // No movement key: check for a click.
+        const click = this.input.popClick();
+        if (click && !click.right) {
+          // Raycast to ground plane (y = 0)
+          const ndc = new THREE.Vector2();
+          const rect = this.renderer.domElement.getBoundingClientRect();
+          ndc.x = ((click.x - rect.left) / rect.width) * 2 - 1;
+          ndc.y = -((click.y - rect.top) / rect.height) * 2 + 1;
+          const ray = new THREE.Raycaster();
+          ray.setFromCamera(ndc, this.cameraCtl.camera);
+          const plane = new THREE.Plane(new THREE.Vector3(0, 1, 0), 0);
+          const hit = new THREE.Vector3();
+          if (ray.ray.intersectPlane(plane, hit) && this.island.isWalkable(hit.x, hit.z)) {
+            this.player.setTarget(hit.x, hit.z);
+          } else {
+            this.player.clearTarget();
+          }
+        } else {
+          // No key, no click → stop moving where we are.
+          this.player.clearTarget();
         }
       }
     }
@@ -279,6 +285,7 @@ export class Game {
 
     // ----- Update world -----
     this.player.update(dt, (x, z) => this.island.clamp(x, z));
+    this.island.update(this.elapsed, { x: this.player.position.x, z: this.player.position.z });
 
     // Camera follow
     this.cameraCtl.update(dt, this.player.position, this.player.rotY);
