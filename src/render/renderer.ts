@@ -9,12 +9,16 @@ export function createRenderer(container: HTMLElement): THREE.WebGLRenderer {
     antialias: true,
     powerPreference: 'high-performance',
     alpha: false,
+    // Keep the drawing buffer around so external tooling (and the
+    // browser compositor) can read it after a frame is rendered.
+    preserveDrawingBuffer: true,
   });
   renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
   renderer.setSize(window.innerWidth, window.innerHeight);
   renderer.outputColorSpace = THREE.SRGBColorSpace;
   renderer.toneMapping = THREE.NoToneMapping;
-  renderer.shadowMap.enabled = false; // off for F0; will revisit in F1
+  renderer.setClearColor(0x5fb8e8, 1.0); // sky-blue clear so even empty frames are not black
+  renderer.shadowMap.enabled = false;
   container.appendChild(renderer.domElement);
   return renderer;
 }

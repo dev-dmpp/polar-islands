@@ -4,7 +4,7 @@
 export const PROFILE = {
   name: 'David M. Pollard P.',
   alias: 'Polar',
-  city: 'San Cristóbal, Juan Díaz, Panamá',
+  city: 'Panamá, Panamá',
   phone: '+507 6608-5665',
   email: 'dmpp1920@gmail.com',
   linkedin: 'https://www.linkedin.com/in/dmpp/',
