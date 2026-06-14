@@ -80,6 +80,20 @@ export class InputManager {
 
   // --- High-level queries (used by main loop) ---
 
+  /** Movement input (continuous). Returns {dx, dz} in world XZ each tick. */
+  getMoveAxis(): { dx: number; dz: number } {
+    let dx = 0;
+    let dz = 0;
+    if (this.keys.has('KeyW') || this.keys.has('ArrowUp'))    dz -= 1;
+    if (this.keys.has('KeyS') || this.keys.has('ArrowDown'))  dz += 1;
+    if (this.keys.has('KeyA') || this.keys.has('ArrowLeft'))  dx -= 1;
+    if (this.keys.has('KeyD') || this.keys.has('ArrowRight')) dx += 1;
+    // Normalize so diagonals aren't faster.
+    const len = Math.hypot(dx, dz);
+    if (len > 0) { dx /= len; dz /= len; }
+    return { dx, dz };
+  }
+
   isThrusting(): boolean {
     return this.keys.has('KeyW') || this.keys.has('ArrowUp');
   }

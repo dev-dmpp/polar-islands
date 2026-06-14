@@ -16,6 +16,7 @@ import { createHud, type HudApi } from '../ui/hud';
 import { createLanding, type LandingApi } from '../ui/landing';
 import { DialogBubble } from '../ui/dialog';
 import { PLAZAS, CONTACT_NPC } from '../content/cv';
+import { WORLD } from '../core/config';
 
 interface PlazaInfo {
   id: string;
@@ -103,8 +104,8 @@ export class Game {
     this.dialog = new DialogBubble(hudContainer);
 
     // Initial camera snap.
-    const dist = 70;
-    const tilt = 0.42;
+    const dist = 100;
+    const tilt = 0.45;
     this.cameraCtl.camera.position.set(
       this.player.position.x,
       dist * Math.sin(tilt),
@@ -121,6 +122,9 @@ export class Game {
 
     // Listen for HUD button events
     window.addEventListener('polar:reset-camera', () => this.resetCamera());
+    window.addEventListener('polar:cv-placeholder', () => {
+      this.hud.showHint('📄 El CV en PDF aún no está publicado. Vuelve pronto o escríbeme por Contacto.', 4500);
+    });
 
     // Dialog advance via click
     this.renderer.domElement.addEventListener('click', () => {
@@ -148,7 +152,7 @@ export class Game {
     if (this.worldActive) return;
     this.worldActive = true;
     this.landing.hide();
-    this.hud.showHint('Click en cualquier punto para moverte · E cerca de una plaza para conversar', 4500);
+    this.hud.showHint('Click o WASD para moverte · E cerca de una plaza para conversar · rueda para zoom', 4500);
   }
 
   private onResize(): void {
@@ -157,8 +161,8 @@ export class Game {
   }
 
   private resetCamera(): void {
-    const dist = 70;
-    const tilt = 0.42;
+    const dist = 100;
+    const tilt = 0.45;
     this.cameraCtl.camera.position.set(
       this.player.position.x,
       dist * Math.sin(tilt),
@@ -206,6 +210,25 @@ export class Game {
     const wheel = this.input.consumeWheel();
     if (wheel !== 0) {
       this.cameraCtl.setZoom(this.cameraCtl.getZoom() + wheel * 0.02);
+    }
+
+    // Continuous WASD/arrow movement (works alongside click-to-move).
+    // If a key is held, it overrides any pending click target so the
+    // player feels responsive.
+    if (this.worldActive && !this.inDialogPlaza) {
+      const axis = this.input.getMoveAxis();
+      if (axis.dx !== 0 || axis.dz !== 0) {
+        this.player.clearTarget();
+        const speed = WORLD.player.speed * dt;
+        const nx = this.player.position.x + axis.dx * speed;
+        const nz = this.player.position.z + axis.dz * speed;
+        const clamped = this.island.clamp(nx, nz);
+        this.player.position.x = clamped.x;
+        this.player.position.z = clamped.z;
+        // Face the direction of movement.
+        this.player.setTarget(this.player.position.x + axis.dx,
+                              this.player.position.z + axis.dz);
+      }
     }
 
     // Click to move

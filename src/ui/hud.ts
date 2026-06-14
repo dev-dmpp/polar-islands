@@ -92,7 +92,11 @@ export function createHud(parent: HTMLElement): HudApi {
   const actMap: Record<string, () => void> = {
     mute: () => { muted = !muted; updateMuteIcon(); },
     reset: () => { window.dispatchEvent(new CustomEvent('polar:reset-camera')); },
-    cv: () => { window.open(PROFILE.email ? `mailto:${PROFILE.email}` : '#', '_blank'); },
+    cv: () => {
+      // El CV en PDF todavía no está publicado. Mostramos un placeholder
+      // en vez de abrir un mailto (eso confundía con el botón de contacto).
+      window.dispatchEvent(new CustomEvent('polar:cv-placeholder'));
+    },
     gh: () => { window.open(PROFILE.github, '_blank', 'noopener'); },
     contact: () => { window.open(`mailto:${PROFILE.email}`, '_blank'); },
     'reset-save': () => {

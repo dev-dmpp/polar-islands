@@ -29,7 +29,7 @@ export const PLAZAS: CvPlaza[] = [
     id: 'aurora',
     name: 'Plaza Aurora',
     subtitle: 'Sobre mí',
-    position: { x: 22, z: -8 },
+    position: { x: -26, z: -20 },
     script: [
       'Hola, soy David — "Polar" para los que me conocen.',
       'Full Stack desde Panamá, especializado en C#, Java y Python.',
@@ -41,7 +41,7 @@ export const PLAZAS: CvPlaza[] = [
     id: 'forja',
     name: 'Plaza Forja',
     subtitle: 'Experiencia',
-    position: { x: -22, z: -14 },
+    position: { x: 26, z: -20 },
     script: [
       '5+ años creando software para clientes reales.',
       'Desde 2020 trabajo como independiente (WOHTS): apps a medida, PHP, JS, contenedores.',
@@ -56,7 +56,7 @@ export const PLAZAS: CvPlaza[] = [
     id: 'biblioteca',
     name: 'Plaza Biblioteca',
     subtitle: 'Proyectos',
-    position: { x: 0, z: 22 },
+    position: { x: 26, z: 20 },
     script: [
       'Mis proyectos principales viven en GitHub.',
       'PolarTranslate: herramienta de traducción para mi flujo diario.',
@@ -73,7 +73,7 @@ export const PLAZAS: CvPlaza[] = [
     id: 'herreria',
     name: 'Plaza Herrería',
     subtitle: 'Stack técnico',
-    position: { x: -22, z: 14 },
+    position: { x: -26, z: 20 },
     script: [
       'Lenguajes: C#, C++, Python, Java (Spring Boot), PHP, JavaScript, Node.js.',
       'Bases de datos: SQL Server, MariaDB, MongoDB, PostgreSQL.',
@@ -87,7 +87,7 @@ export const PLAZAS: CvPlaza[] = [
     id: 'torre',
     name: 'Plaza Torre',
     subtitle: 'Certificaciones',
-    position: { x: 22, z: 16 },
+    position: { x: 0, z: -24 },
     script: [
       '10+ certificaciones, sigo estudiando porque esto cambia cada semana.',
       'Web Design (Michigan, 2024) · Kubernetes (Banco General, 2024).',
@@ -106,7 +106,7 @@ export const CONTACT_NPC = {
   script: [
     '¡Escríbeme cuando quieras!',
     `📧 ${'dmpp1920@gmail.com'}`,
-    `📱 +507 6608-5665 · San Cristóbal, Panamá`,
+    `📱 +507 6608-5665 · Panamá, Panamá`,
     'LinkedIn y GitHub en los links de abajo.',
   ],
   links: [

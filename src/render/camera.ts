@@ -19,10 +19,10 @@ export class FollowCamera {
   constructor() {
     this.zoom = WORLD.camera.initialZoom;
     this.camera = new THREE.PerspectiveCamera(50, 1, 0.1, 8000);
-    // The island is 44x36, half-extent 22. Camera at 70 units with tilt
-    // ~24° from the horizon frames the whole island with margin.
-    const dist = 70;
-    const tilt = 0.42;
+    // The island is now 70x56. Dist=100 with tilt ~26° frames the whole
+    // island with margin, while still leaving the player large on screen.
+    const dist = 100;
+    const tilt = 0.45;
     this.camera.position.set(0, dist * Math.sin(tilt), dist * Math.cos(tilt));
     this.camera.lookAt(0, 0, 0);
     this.curPos.copy(this.camera.position);
@@ -41,9 +41,9 @@ export class FollowCamera {
 
   /** Map zoom value to FOV. Smaller zoom = smaller FOV = more zoomed in. */
   private applyZoom(): void {
-    // Map [minZoom=5 .. maxZoom=60] -> [fov=25 .. fov=70]
+    // Map [minZoom=5 .. maxZoom=100] -> [fov=22 .. fov=75]
     const t = (this.zoom - WORLD.camera.minZoom) / (WORLD.camera.maxZoom - WORLD.camera.minZoom);
-    this.camera.fov = THREE.MathUtils.lerp(25, 70, t);
+    this.camera.fov = THREE.MathUtils.lerp(22, 75, t);
     this.camera.updateProjectionMatrix();
   }
 
@@ -56,8 +56,8 @@ export class FollowCamera {
    */
   update(dt: number, playerPos: THREE.Vector3, _playerRotY: number): void {
     const lerpAmt = 1 - Math.pow(1 - WORLD.camera.followLerp, dt * 60);
-    const dist = 70;
-    const tilt = 0.42;
+    const dist = 100;
+    const tilt = 0.45;
     this.targetPos.set(
       playerPos.x,
       dist * Math.sin(tilt),

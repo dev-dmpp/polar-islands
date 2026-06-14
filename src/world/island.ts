@@ -30,14 +30,14 @@ interface PlazaSpec {
   style: 'forge' | 'library' | 'tower' | 'plaza' | 'workshop' | 'shrine' | 'well';
 }
 
-/** Plazas arranged in a 2x3 grid on a rectangular island, with a
- *  central "shrine" point in the middle. */
+/** Plazas arranged in a 2x3 grid on a rectangular island (70x56), with a
+ *  central "well" point in the middle. */
 const PLAZA_SPOTS: PlazaSpec[] = [
-  { id: 'aurora',      name: 'Plaza Aurora',     x: -14, z: -10, style: 'plaza'    },
-  { id: 'forja',       name: 'Plaza Forja',      x:  14, z: -10, style: 'forge'    },
-  { id: 'biblioteca',  name: 'Plaza Biblioteca', x:  14, z:  10, style: 'library'  },
-  { id: 'herreria',    name: 'Plaza Herrería',   x: -14, z:  10, style: 'workshop' },
-  { id: 'torre',       name: 'Plaza Torre',      x:   0, z: -14, style: 'tower'    },
+  { id: 'aurora',      name: 'Plaza Aurora',     x: -26, z: -20, style: 'plaza'    },
+  { id: 'forja',       name: 'Plaza Forja',      x:  26, z: -20, style: 'forge'    },
+  { id: 'biblioteca',  name: 'Plaza Biblioteca', x:  26, z:  20, style: 'library'  },
+  { id: 'herreria',    name: 'Plaza Herrería',   x: -26, z:  20, style: 'workshop' },
+  { id: 'torre',       name: 'Plaza Torre',      x:   0, z: -24, style: 'tower'    },
   { id: 'contacto',    name: 'El Mensajero',     x:   0, z:   0, style: 'well'     },
 ];
 
@@ -347,8 +347,8 @@ export function buildIsland(scene: THREE.Scene): Island {
   grass.position.y = surfY;
   group.add(grass);
 
-  // Inner darker rectangle (slightly inset) — gives the field a worn
-  // path look without an explicit grid of tiles.
+  // Subtle darker path ring under the player's default zone.
+  // NOTE: a single low-offset ring avoids z-fighting with the grass.
   const innerShape = new THREE.Shape();
   const inW = W * 0.78, inD = D * 0.78, inR = cornerR * 0.8;
   innerShape.moveTo(-inW/2 + inR, -inD/2);
@@ -363,16 +363,9 @@ export function buildIsland(scene: THREE.Scene): Island {
   const innerGeom = new THREE.ShapeGeometry(innerShape, 48);
   innerGeom.rotateX(-Math.PI / 2);
   const inner = new THREE.Mesh(innerGeom, toonMat({ color: PALETTE.grassDark }));
-  inner.position.y = surfY + 0.005;
+  // 0.04 (was 0.005) — well above z-fighting precision.
+  inner.position.y = surfY + 0.04;
   group.add(inner);
-
-  // Center patch (under the well)
-  const centerPatch = new THREE.Mesh(
-    new THREE.CylinderGeometry(2.5, 2.5, 0.05, 16),
-    toonMat({ color: PALETTE.grassHi }),
-  );
-  centerPatch.position.set(0, surfY + 0.012, 0);
-  group.add(centerPatch);
 
   // --- Cliff underneath ---
   // A short beveled box follows the rounded-rect footprint.
@@ -390,26 +383,25 @@ export function buildIsland(scene: THREE.Scene): Island {
   addOutline(base, '#2a1a0a', 1.02);
   group.add(base);
 
-  // --- Water ring ---
-  // A big rounded rectangle in the same shape as the island, scaled
-  // outward, gives the "island surrounded by water" look.
-  const waterShape = new THREE.Shape();
-  const wOuter = W * 1.4, wDepth = D * 1.4, wR = cornerR * 1.4;
-  waterShape.moveTo(-wOuter/2 + wR, -wDepth/2);
-  waterShape.lineTo(wOuter/2 - wR, -wDepth/2);
-  waterShape.quadraticCurveTo(wOuter/2, -wDepth/2, wOuter/2, -wDepth/2 + wR);
-  waterShape.lineTo(wOuter/2, wDepth/2 - wR);
-  waterShape.quadraticCurveTo(wOuter/2, wDepth/2, wOuter/2 - wR, wDepth/2);
-  waterShape.lineTo(-wOuter/2 + wR, wDepth/2);
-  waterShape.quadraticCurveTo(-wOuter/2, wDepth/2, -wOuter/2, wDepth/2 - wR);
-  waterShape.lineTo(-wOuter/2, -wDepth/2 + wR);
-  waterShape.quadraticCurveTo(-wOuter/2, -wDepth/2, -wOuter/2 + wR, -wDepth/2);
-  const waterGeom = new THREE.ShapeGeometry(waterShape, 64);
+  // --- Water plane (huge, off-island) ---
+  // A flat large plane sits at the waterline, color turquesa. The island
+  // sits on top of it, so the water "wraps around" the island up to the
+  // horizon. Single plane, no outline (water is supposed to be smooth).
+  const waterGeom = new THREE.PlaneGeometry(400, 400, 1, 1);
   waterGeom.rotateX(-Math.PI / 2);
   const waterMat = toonMat({ color: PALETTE.water, transparent: true, opacity: 0.85 });
   const water = new THREE.Mesh(waterGeom, waterMat);
-  water.position.y = surfY - 0.3;
+  water.position.y = surfY - 0.05;
   group.add(water);
+
+  // Ocean accent ring (slightly darker ring) — adds a subtle depth
+  // illusion right at the island's edge.
+  const ringGeom = new THREE.RingGeometry(W * 0.6, W * 1.1, 48);
+  ringGeom.rotateX(-Math.PI / 2);
+  const ringMat = toonMat({ color: PALETTE.waterHi, transparent: true, opacity: 0.35 });
+  const ring = new THREE.Mesh(ringGeom, ringMat);
+  ring.position.y = surfY - 0.03;
+  group.add(ring);
 
   scene.add(group);
 
@@ -425,7 +417,7 @@ export function buildIsland(scene: THREE.Scene): Island {
   // --- Trees scattered around the plaza grid ---
   const treeSpots: Array<{ x: number; z: number; scale: number }> = [];
   let attempts = 0;
-  while (treeSpots.length < 22 && attempts < 400) {
+  while (treeSpots.length < 40 && attempts < 600) {
     attempts++;
     const x = (rng() - 0.5) * (W - 12);
     const z = (rng() - 0.5) * (D - 12);
@@ -439,7 +431,7 @@ export function buildIsland(scene: THREE.Scene): Island {
       if (Math.hypot(t.x - x, t.z - z) < 3) { treeClash = true; break; }
     }
     if (treeClash) continue;
-    treeSpots.push({ x, z, scale: 0.7 + rng() * 0.5 });
+    treeSpots.push({ x, z, scale: 0.8 + rng() * 0.6 });
   }
   for (const t of treeSpots) {
     const tree = buildTree(rng);
@@ -452,7 +444,7 @@ export function buildIsland(scene: THREE.Scene): Island {
   }
 
   // --- Decorative bushes/flowers ---
-  for (let i = 0; i < 40; i++) {
+  for (let i = 0; i < 70; i++) {
     const x = (rng() - 0.5) * (W - 6);
     const z = (rng() - 0.5) * (D - 6);
     let tooClose = false;

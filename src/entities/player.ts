@@ -50,28 +50,39 @@ export class Player {
     addOutline(this.body, '#0a0a1a', 1.06);
     this.group.add(this.body);
 
-    // Head
-    this.head = new THREE.Mesh(
-      new THREE.SphereGeometry(0.32, 12, 10),
+    // Neck — fills the gap between body and head so the silhouette
+    // is continuous and the head doesn't look like it floats.
+    const neck = new THREE.Mesh(
+      new THREE.CylinderGeometry(0.14, 0.16, 0.18, 8),
       toonMat({ color: PALETTE.npcSkin }),
     );
-    this.head.position.y = 1.65;
+    neck.position.y = 1.48;
+    addOutline(neck, '#0a0a1a', 1.06);
+    this.group.add(neck);
+
+    // Head
+    this.head = new THREE.Mesh(
+      new THREE.SphereGeometry(0.30, 12, 10),
+      toonMat({ color: PALETTE.npcSkin }),
+    );
+    this.head.position.y = 1.78;
     addOutline(this.head, '#0a0a1a', 1.06);
     this.group.add(this.head);
 
-    // Hair (a slightly larger hemisphere on top)
+    // Hair — a cap on top of the head, parented to the group (not
+    // the head) so it bobs with the body and stays visually attached.
     const hair = new THREE.Mesh(
-      new THREE.SphereGeometry(0.34, 12, 8, 0, Math.PI * 2, 0, Math.PI * 0.55),
+      new THREE.SphereGeometry(0.32, 12, 8, 0, Math.PI * 2, 0, Math.PI * 0.5),
       toonMat({ color: '#3a2a1a' }),
     );
-    hair.position.y = 1.7;
+    hair.position.y = 1.85;
     addOutline(hair, '#0a0a1a', 1.05);
-    this.head.add(hair);
+    this.group.add(hair);
 
     // Eyes
     const eyeMat = toonMat({ color: '#0a0a1a', emissive: '#0a0a1a', emissiveIntensity: 0.0 });
     const eyeL = new THREE.Mesh(new THREE.SphereGeometry(0.05, 8, 6), eyeMat);
-    eyeL.position.set(-0.10, 1.70, 0.28);
+    eyeL.position.set(-0.10, 1.83, 0.26);
     this.group.add(eyeL);
     const eyeR = eyeL.clone();
     eyeR.position.x = 0.10;
@@ -173,12 +184,12 @@ export class Player {
       this.rightArm.rotation.x = swing * 0.5;
       // Vertical bob
       this.body.position.y = 0.85 + Math.abs(Math.sin(this.walkPhase * 2)) * WORLD.player.walkBobAmp;
-      this.head.position.y = 1.65 + Math.abs(Math.sin(this.walkPhase * 2)) * WORLD.player.walkBobAmp;
+      this.head.position.y = 1.78 + Math.abs(Math.sin(this.walkPhase * 2)) * WORLD.player.walkBobAmp;
     } else {
       // Idle bob (subtle breathing)
       const t = performance.now() * 0.0015;
       this.body.position.y = 0.85 + Math.sin(t) * 0.02;
-      this.head.position.y = 1.65 + Math.sin(t) * 0.02;
+      this.head.position.y = 1.78 + Math.sin(t) * 0.02;
       // Relax legs/arms
       this.leftLeg.rotation.x *= 0.85;
       this.rightLeg.rotation.x *= 0.85;

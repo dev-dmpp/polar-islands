@@ -50,8 +50,8 @@ export const PALETTE = {
 export const WORLD = {
   /** Island size in world units (rectangular, slightly wider than deep). */
   island: {
-    width: 44,    // X (east-west)
-    depth: 36,    // Z (north-south)
+    width: 70,    // X (east-west) — was 44, now larger
+    depth: 56,    // Z (north-south) — was 36
     surfaceY: 0,
   },
   /** Player walk speed in world units / second. */
@@ -67,9 +67,9 @@ export const WORLD = {
   camera: {
     lookAhead: 0,
     followLerp: 0.12,
-    minZoom: 5,
-    maxZoom: 60,
-    initialZoom: 22,
+    minZoom: 5,    // can zoom in close
+    maxZoom: 100,  // can zoom out far to see the whole world
+    initialZoom: 12, // close-ish by default, but not fully zoomed in
   },
   /** Rng seed for procedural world. */
   seed: 'polar-aurora',
