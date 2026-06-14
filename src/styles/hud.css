@@ -57,11 +57,27 @@ html, body {
 }
 
 #hud { position: fixed; inset: 0; pointer-events: none; z-index: 10; }
-/* Only explicit interactive elements get pointer events. Children that
-   don't opt in (the brand label, zone labels, hints) stay click-through. */
+/* Allow hits on the top bar container — the .hud-btn children that need
+   to be clickable are inside .hud-top, and even though the .hud-btn
+   itself sets pointer-events: auto, browsers block the hit-test at the
+   nearest pointer-events:none ancestor (.hud-top). Setting .hud-top to
+   auto lets clicks fall through to the buttons. We then re-disable
+   the genuinely click-through elements (zone label, hint, hidden
+   overlays, the menu when not visible). */
+#hud .hud-top,
 #hud .hud-btn,
-#hud .hud-menu,
 #hud .dialog-bubble {
+  pointer-events: auto;
+}
+#hud .hud-zone,
+#hud .hud-hint,
+#hud .hud-menu,
+#hud .landing.hidden {
+  pointer-events: none;
+}
+/* The menu and landing are opt-in: only intercept clicks when visible. */
+#hud .hud-menu.visible,
+#hud .landing:not(.hidden) {
   pointer-events: auto;
 }
 
