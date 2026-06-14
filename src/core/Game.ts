@@ -44,6 +44,9 @@ export class Game {
 
   /** Map plaza id → info. */
   private plazas: PlazaInfo[] = [];
+  /** Whether WASD was active on the previous frame. Used to detect
+   *  the "key released" edge and clear the target then. */
+  private wasdActive = false;
   /** Plaza id currently in range (for the HUD label). */
   private activePlaza: string | null = null;
   /** Plaza currently in dialog. */
@@ -211,43 +214,51 @@ export class Game {
 
     // Unified movement: WASD/arrows take priority over click.
     //
-    // CRITICAL: We do NOT clear the target every frame. The target
-    // persists until the Player arrives (reachDist) or a new input
-    // overrides it. Clearing each frame would cancel click-to-move
-    // immediately, since popClick() returns null the frame after
-    // a click is consumed.
+    // Key insight:
+    //   - Click target must PERSIST (don't clear each frame, that
+    //     kills click-to-move because popClick returns null next frame).
+    //   - WASD target is RECOMPUTED each frame the key is held, so it
+    //     naturally moves with the player. The only "edge" we must
+    //     handle is: key RELEASED → player must stop. We do that by
+    //     clearing the target the frame WASD goes from active→inactive.
     if (this.worldActive && this.inDialogPlaza) {
-      // While in dialog, any click advances; popClick is consumed.
       const click = this.input.popClick();
       if (click) this.dialog.advance();
     } else if (this.worldActive) {
       const axis = this.input.getMoveAxis();
-      if (axis.dx !== 0 || axis.dz !== 0) {
-        // WASD: target far ahead in the input direction.
+      const wasdNow = axis.dx !== 0 || axis.dz !== 0;
+      if (wasdNow) {
+        // WASD held: target far ahead, recomputed every frame so it
+        // tracks the player's current position.
         this.player.setTarget(
           this.player.position.x + axis.dx * 100,
           this.player.position.z + axis.dz * 100,
         );
+        this.wasdActive = true;
       } else {
-        // No movement key: check for a pending click.
-        const click = this.input.popClick();
-        if (click && !click.right) {
-          // Raycast to ground plane (y = 0)
-          const ndc = new THREE.Vector2();
-          const rect = this.renderer.domElement.getBoundingClientRect();
-          ndc.x = ((click.x - rect.left) / rect.width) * 2 - 1;
-          ndc.y = -((click.y - rect.top) / rect.height) * 2 + 1;
-          const ray = new THREE.Raycaster();
-          ray.setFromCamera(ndc, this.cameraCtl.camera);
-          const plane = new THREE.Plane(new THREE.Vector3(0, 1, 0), 0);
-          const hit = new THREE.Vector3();
-          if (ray.ray.intersectPlane(plane, hit) && this.island.isWalkable(hit.x, hit.z)) {
-            this.player.setTarget(hit.x, hit.z);
-            // target persists across frames until the player arrives.
+        // WASD not held this frame.
+        if (this.wasdActive) {
+          // Just released: clear the lingering target so the player stops.
+          this.player.clearTarget();
+          this.wasdActive = false;
+        } else {
+          // WASD was already inactive (or never pressed). Consume any
+          // pending click as a new target. Do NOT clear — the player
+          // may still be walking to a previous click destination.
+          const click = this.input.popClick();
+          if (click && !click.right) {
+            const ndc = new THREE.Vector2();
+            const rect = this.renderer.domElement.getBoundingClientRect();
+            ndc.x = ((click.x - rect.left) / rect.width) * 2 - 1;
+            ndc.y = -((click.y - rect.top) / rect.height) * 2 + 1;
+            const ray = new THREE.Raycaster();
+            ray.setFromCamera(ndc, this.cameraCtl.camera);
+            const plane = new THREE.Plane(new THREE.Vector3(0, 1, 0), 0);
+            const hit = new THREE.Vector3();
+            if (ray.ray.intersectPlane(plane, hit) && this.island.isWalkable(hit.x, hit.z)) {
+              this.player.setTarget(hit.x, hit.z);
+            }
           }
-          // No click, or click outside walkable area: KEEP the
-          // current target. Do not clear here — the player is on
-          // their way to the previous click destination.
         }
       }
     }
