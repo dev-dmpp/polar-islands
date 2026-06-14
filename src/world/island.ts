@@ -368,19 +368,18 @@ export function buildIsland(scene: THREE.Scene): Island {
   group.add(inner);
 
   // --- Cliff underneath ---
-  // A short beveled box follows the rounded-rect footprint.
+  // No outline on the cliff/base — the strong black outline framed the
+  // whole island against the water and created a harsh "edge line".
   const cliffGeom = new THREE.BoxGeometry(W * 0.95, 6, D * 0.95, 1, 1, 1);
   const cliff = new THREE.Mesh(cliffGeom, toonMat({ color: PALETTE.cliff }));
   cliff.position.y = surfY - 3;
-  addOutline(cliff, '#2a1a0a', 1.02);
   group.add(cliff);
 
-  // Tapered bottom
+  // Tapered bottom (no outline)
   const baseGeom = new THREE.ConeGeometry(1, 9, 24, 1);
   baseGeom.scale(W * 0.6, 1, D * 0.6);
   const base = new THREE.Mesh(baseGeom, toonMat({ color: PALETTE.cliffHi }));
   base.position.y = surfY - 10;
-  addOutline(base, '#2a1a0a', 1.02);
   group.add(base);
 
   // --- Water plane (huge, off-island) ---
@@ -394,11 +393,12 @@ export function buildIsland(scene: THREE.Scene): Island {
   water.position.y = surfY - 0.05;
   group.add(water);
 
-  // Ocean accent ring (slightly darker ring) — adds a subtle depth
-  // illusion right at the island's edge.
-  const ringGeom = new THREE.RingGeometry(W * 0.6, W * 1.1, 48);
+  // Ocean accent: a slightly lighter ring around the island (no
+  // outline) — gives the "shallow water" look and softens the hard
+  // edge between grass and water.
+  const ringGeom = new THREE.RingGeometry(W * 0.5, W * 1.4, 64);
   ringGeom.rotateX(-Math.PI / 2);
-  const ringMat = toonMat({ color: PALETTE.waterHi, transparent: true, opacity: 0.35 });
+  const ringMat = toonMat({ color: PALETTE.waterHi, transparent: true, opacity: 0.45 });
   const ring = new THREE.Mesh(ringGeom, ringMat);
   ring.position.y = surfY - 0.03;
   group.add(ring);

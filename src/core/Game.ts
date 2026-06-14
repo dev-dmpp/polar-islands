@@ -16,7 +16,6 @@ import { createHud, type HudApi } from '../ui/hud';
 import { createLanding, type LandingApi } from '../ui/landing';
 import { DialogBubble } from '../ui/dialog';
 import { PLAZAS, CONTACT_NPC } from '../content/cv';
-import { WORLD } from '../core/config';
 
 interface PlazaInfo {
   id: string;
@@ -104,8 +103,8 @@ export class Game {
     this.dialog = new DialogBubble(hudContainer);
 
     // Initial camera snap.
-    const dist = 100;
-    const tilt = 0.45;
+    const dist = 70;
+    const tilt = 0.50;
     this.cameraCtl.camera.position.set(
       this.player.position.x,
       dist * Math.sin(tilt),
@@ -161,8 +160,8 @@ export class Game {
   }
 
   private resetCamera(): void {
-    const dist = 100;
-    const tilt = 0.45;
+    const dist = 70;
+    const tilt = 0.50;
     this.cameraCtl.camera.position.set(
       this.player.position.x,
       dist * Math.sin(tilt),
@@ -212,26 +211,25 @@ export class Game {
       this.cameraCtl.setZoom(this.cameraCtl.getZoom() + wheel * 0.02);
     }
 
-    // Continuous WASD/arrow movement (works alongside click-to-move).
-    // If a key is held, it overrides any pending click target so the
-    // player feels responsive.
+    // Continuous WASD/arrow movement. The target is set to a point far
+    // ahead in the input direction; Player.update() then moves toward it
+    // each frame, producing continuous walking, facing and walk cycle.
     if (this.worldActive && !this.inDialogPlaza) {
       const axis = this.input.getMoveAxis();
       if (axis.dx !== 0 || axis.dz !== 0) {
+        // Target 100 units ahead (way past reachDist) so the player
+        // never "arrives" and keeps walking.
+        this.player.setTarget(
+          this.player.position.x + axis.dx * 100,
+          this.player.position.z + axis.dz * 100,
+        );
+      } else {
+        // No key pressed: stop walking immediately.
         this.player.clearTarget();
-        const speed = WORLD.player.speed * dt;
-        const nx = this.player.position.x + axis.dx * speed;
-        const nz = this.player.position.z + axis.dz * speed;
-        const clamped = this.island.clamp(nx, nz);
-        this.player.position.x = clamped.x;
-        this.player.position.z = clamped.z;
-        // Face the direction of movement.
-        this.player.setTarget(this.player.position.x + axis.dx,
-                              this.player.position.z + axis.dz);
       }
     }
 
-    // Click to move
+    // Click to move (still works alongside WASD)
     if (this.worldActive && !this.inDialogPlaza) {
       const click = this.input.popClick();
       if (click && !click.right) {
@@ -266,9 +264,16 @@ export class Game {
         this.hud.setMuted(!this.settings.audioOn);
       }
       if (this.input.isResetDown()) this.resetCamera();
-      if (this.input.isAdvancing() && !this.inDialogPlaza) {
-        const nearest = this.getNearestPlaza();
-        if (nearest) this.startDialog(nearest);
+      // Advance dialog with E / Space / Enter — works whether or not
+      // a dialog is open. If not in a dialog, E/Space opens one with
+      // the nearest plaza.
+      if (this.input.consumeAdvanceEdge()) {
+        if (this.inDialogPlaza) {
+          this.dialog.advance();
+        } else {
+          const nearest = this.getNearestPlaza();
+          if (nearest) this.startDialog(nearest);
+        }
       }
     }
 

@@ -30,9 +30,12 @@ export class Player {
   constructor() {
     this.group = new THREE.Group();
     this.group.position.set(0, 0, 4);
+    // Scale the player up so they read as a person against trees and
+    // houses at the default camera distance.
+    this.group.scale.setScalar(1.4);
 
     // Soft round shadow disc beneath the player.
-    const shadowGeom = new THREE.CircleGeometry(0.55, 16);
+    const shadowGeom = new THREE.CircleGeometry(0.40, 16);
     shadowGeom.rotateX(-Math.PI / 2);
     const shadowMat = new THREE.MeshBasicMaterial({
       color: 0x000000, transparent: true, opacity: 0.32, depthWrite: false,

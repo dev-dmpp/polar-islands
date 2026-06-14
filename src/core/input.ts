@@ -31,12 +31,29 @@ export class InputManager {
     window.removeEventListener('resize', this.onResize);
   }
 
+  private keyState = {
+    /** Set the first frame a key goes down; cleared on consume. */
+    advanceEdge: false,
+  };
   private onKeyDown = (e: KeyboardEvent): void => {
     if (['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'Space', 'Tab'].includes(e.code)) e.preventDefault();
+    if (!this.keys.has(e.code)) {
+      // Edge-trigger for "press to advance / open dialog"
+      if (e.code === 'KeyE' || e.code === 'Space' || e.code === 'Enter') {
+        this.keyState.advanceEdge = true;
+      }
+    }
     this.keys.add(e.code);
   };
   private onKeyUp = (e: KeyboardEvent): void => { this.keys.delete(e.code); };
-  private onBlur = (): void => { this.keys.clear(); };
+  private onBlur = (): void => { this.keys.clear(); this.keyState.advanceEdge = false; };
+
+  /** Edge-triggered: true exactly one frame per key press. */
+  consumeAdvanceEdge(): boolean {
+    const v = this.keyState.advanceEdge;
+    this.keyState.advanceEdge = false;
+    return v;
+  }
 
   private onMouseMove = (e: MouseEvent): void => {
     const target = e.currentTarget as HTMLCanvasElement;

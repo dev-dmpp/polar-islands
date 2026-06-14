@@ -19,10 +19,12 @@ export class FollowCamera {
   constructor() {
     this.zoom = WORLD.camera.initialZoom;
     this.camera = new THREE.PerspectiveCamera(50, 1, 0.1, 8000);
-    // The island is now 70x56. Dist=100 with tilt ~26° frames the whole
-    // island with margin, while still leaving the player large on screen.
-    const dist = 100;
-    const tilt = 0.45;
+    // The island is 70x56. Dist=70 with tilt ~28° leaves the player
+    // visibly larger than the trees and frames the whole island with
+    // margin. The camera can zoom out further (up to maxZoom=100) to
+    // see everything at once.
+    const dist = 70;
+    const tilt = 0.50;
     this.camera.position.set(0, dist * Math.sin(tilt), dist * Math.cos(tilt));
     this.camera.lookAt(0, 0, 0);
     this.curPos.copy(this.camera.position);
@@ -56,8 +58,8 @@ export class FollowCamera {
    */
   update(dt: number, playerPos: THREE.Vector3, _playerRotY: number): void {
     const lerpAmt = 1 - Math.pow(1 - WORLD.camera.followLerp, dt * 60);
-    const dist = 100;
-    const tilt = 0.45;
+    const dist = 70;
+    const tilt = 0.50;
     this.targetPos.set(
       playerPos.x,
       dist * Math.sin(tilt),
